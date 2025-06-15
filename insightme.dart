@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'insight_trends.dart';
 import 'pie_chart_widget.dart';
 import 'package:mindmirror_app/config.dart';
+import 'main.dart'; // ✅ globalTodayDate 사용
 
 class InsightMePage extends StatefulWidget {
   final String userId;
@@ -24,24 +25,38 @@ class _InsightMePageState extends State<InsightMePage> {
   late DateTime startDate;
   late DateTime endDate;
 
+  bool _summaryFetched = false;
+  bool _coachingFetched = false;
+
   @override
   void initState() {
     super.initState();
-    final today = DateTime.now();
-    endDate = DateTime(today.year, today.month, today.day);
-    startDate = endDate.subtract(const Duration(days: 6));
+    endDate = globalTodayDate;
+    startDate = globalTodayDate.subtract(const Duration(days: 6));
     userId = widget.userId;
     _initialize();
   }
 
   Future<void> _initialize() async {
-    await fetchInsightSummary(start: startDate, end: endDate);
-    await fetchCoachingMessage(start: startDate, end: endDate);
+    final start = startDate;
+    final end = endDate;
+
+    await Future.wait([
+      fetchInsightSummary(start: start, end: end),
+      fetchCoachingMessage(start: start, end: end),
+    ]);
+
+    if (mounted) {
+      setState(() {
+        _summaryFetched = true;
+        _coachingFetched = true;
+        _loading = false;
+      });
+    }
   }
 
-  // 날짜를 로컬 기준 yyyy-MM-dd 문자열로 만들어 요청
   String _formatDateString(DateTime dt) {
-    return "${dt.year.toString().padLeft(4,'0')}-${dt.month.toString().padLeft(2,'0')}-${dt.day.toString().padLeft(2,'0')}";
+    return "${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}";
   }
 
   Future<void> fetchInsightSummary({required DateTime start, required DateTime end}) async {
@@ -59,8 +74,6 @@ class _InsightMePageState extends State<InsightMePage> {
         dailyMoodData = Map<String, double>.from(
           (decoded["mood"] as Map).map((k, v) => MapEntry(k, (v as num).toDouble())),
         );
-        print("Loaded summary: $summary");
-        print("Loaded dailyMoodData: $dailyMoodData");
         _loading = false;
       });
     } else {
@@ -98,8 +111,8 @@ class _InsightMePageState extends State<InsightMePage> {
   Future<void> _selectDateRange() async {
     final picked = await showDateRangePicker(
       context: context,
-      firstDate: DateTime.now().subtract(const Duration(days: 30)),
-      lastDate: DateTime.now(),
+      firstDate: globalTodayDate.subtract(const Duration(days: 30)),
+      lastDate: globalTodayDate,
       initialDateRange: DateTimeRange(start: startDate, end: endDate),
     );
 
@@ -108,9 +121,10 @@ class _InsightMePageState extends State<InsightMePage> {
         startDate = picked.start;
         endDate = picked.end;
         _loading = true;
+        _summaryFetched = false;
+        _coachingFetched = false;
       });
-      await fetchInsightSummary(start: picked.start, end: picked.end);
-      await fetchCoachingMessage(start: picked.start, end: picked.end);
+      await _initialize();
     }
   }
 

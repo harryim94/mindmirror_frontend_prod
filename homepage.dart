@@ -5,7 +5,7 @@ import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../main.dart'; // RouteObserver
+import '../main.dart';
 import 'package:mindmirror_app/config.dart';
 
 class HomePage extends StatefulWidget {
@@ -42,7 +42,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
 
     _fetchMood();
     _fetchHighlight();
-    Timer.periodic(const Duration(seconds: 15), (_) => _fetchMood());
   }
 
   @override
@@ -67,9 +66,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
   Future<void> _fetchMood() async {
     if (_userId == null) return;
     try {
-      final today = DateTime.now();
-      final todayUtc = today.toUtc();  // UTC 변환 추가
-      final start = DateFormat('yyyy-MM-dd').format(todayUtc);
+      final today = DateTime.now().toLocal(); // ✅ 로컬 시간 기준
+      final start = DateFormat('yyyy-MM-dd').format(today);
       final url = '${AppConfig.baseUrl}/insight/summary?start=$start&end=$start&user_id=$_userId';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
@@ -85,7 +83,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
           }
           todayEntries = totalEntries;
           lastUpdated = DateTime.now();
-          surveyLimitReached = false; // 테스트 중엔 무조건 허용
+          surveyLimitReached = false;
         });
       }
     } catch (e) {

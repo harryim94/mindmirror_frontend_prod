@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'emotion_history_page.dart';
 import 'insightme.dart';
 import 'package:mindmirror_app/config.dart';
+import '../main.dart'; // ✅ RouteObserver 사용
 
 class ChatPage extends StatefulWidget {
   final String userId;
@@ -17,7 +18,7 @@ class ChatPage extends StatefulWidget {
   State<ChatPage> createState() => _ChatPageState();
 }
 
-class _ChatPageState extends State<ChatPage> {
+class _ChatPageState extends State<ChatPage> with RouteAware {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   List<Map<String, dynamic>> _messages = [];
@@ -32,6 +33,23 @@ class _ChatPageState extends State<ChatPage> {
     super.initState();
     _userId = widget.userId;
     _loadTodayChatHistory();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)!);
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    _loadTodayChatHistory(); // ✅ 뒤로가기 후 재진입 시 기록 다시 불러오기
   }
 
   Future<void> _loadTodayChatHistory() async {
